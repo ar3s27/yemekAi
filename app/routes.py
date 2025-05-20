@@ -34,4 +34,49 @@ def register():
         else:
             user = User(username=username)
             user.set_password(password)
-            db.session
+            db.session.add(user)
+            db.session.commit()
+            flash("Kayıt başarılı, giriş yapabilirsiniz.", "success")
+            return redirect(url_for('login'))
+    return render_template('register.html')
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        user = User.query.filter_by(username=username).first()
+        if user and user.check_password(password):
+            login_user(user)
+            flash("Giriş başarılı.", "success")
+            return redirect(url_for('index'))
+        else:
+            flash("Giriş başarısız. Kullanıcı adı veya şifre yanlış.", "danger")
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    logout_user()
+    flash("Çıkış yapıldı.", "info")
+    return redirect(url_for('index'))
+
+@app.route('/like/<int:recipe_id>', methods=['POST'])
+@login_required
+def like(recipe_id):
+    recipe = Recipe.query.get_or_404(recipe_id)
+    if recipe in current_user.liked_recipes:
+        current_user.liked_recipes.remove(recipe)
+        flash("Tarif beğenme kaldırıldı.", "info")
+    else:
+        current_user.liked_recipes.append(recipe)
+        flash("Tarif beğenildi.", "success")
+    db.session.commit()
+    return redirect(url_for('index'))
+
+@app.route('/profile')
+@login_required
+def profile():
+    liked = current_user.liked_recipes
+    return render_template('profile.html', recipes=liked)
