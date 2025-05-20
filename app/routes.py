@@ -2,8 +2,8 @@ from flask import current_app as app, render_template, request, redirect, url_fo
 from . import db
 from flask_login import login_user, login_required, logout_user, current_user
 from .models import User, Recipe
+from werkzeug.security import check_password_hash, generate_password_hash
 
-# Örnek Anasayfa - tarif arama ve listeleme
 @app.route('/', methods=['GET', 'POST'])
 @login_required
 def index():
@@ -13,17 +13,50 @@ def index():
     recipes = Recipe.query.all()
     return render_template('index.html', recipes=recipes)
 
-# Giriş
+# ✅ Giriş yapma
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    # login kodları
-    pass
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
 
-# Kayıt
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        user = User.query.filter_by(username=username).first()
+
+        if user and check_password_hash(user.password, password):
+            login_user(user)
+            flash("Giriş başarılı!", "success")
+            return redirect(url_for('index'))
+        else:
+            flash("Kullanıcı adı veya şifre hatalı.", "danger")
+            return redirect(url_for('login'))
+
+    return render_template('login.html')
+
+# ✅ Kayıt olma
 @app.route('/register', methods=['GET', 'POST'])
 def register():
-    # register kodları
-    pass
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
+
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+
+        existing_user = User.query.filter_by(username=username).first()
+        if existing_user:
+            flash("Bu kullanıcı adı zaten alınmış.", "warning")
+            return redirect(url_for('register'))
+
+        hashed_password = generate_password_hash(password)
+        new_user = User(username=username, password=hashed_password)
+        db.session.add(new_user)
+        db.session.commit()
+        flash("Kayıt başarılı! Giriş yapabilirsiniz.", "success")
+        return redirect(url_for('login'))
+
+    return render_template('register.html')
 
 # Çıkış
 @app.route('/logout')
@@ -33,7 +66,7 @@ def logout():
     flash("Çıkış yapıldı.", "info")
     return redirect(url_for('login'))
 
-# Beğenme
+# Tarif beğenme
 @app.route('/like/<int:recipe_id>', methods=['POST'])
 @login_required
 def like(recipe_id):
