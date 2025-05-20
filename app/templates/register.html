@@ -6,7 +6,7 @@
 </head>
 <body>
     <h2>Kayıt Ol</h2>
-    <form method="POST" action="{{ url_for('register') }}">
+    <form method="POST" action="{{ url_for('main.register') }}">
         <label>Kullanıcı Adı:</label><br>
         <input type="text" name="username" required><br>
         <label>Email:</label><br>
@@ -15,6 +15,6 @@
         <input type="password" name="password" required><br><br>
         <button type="submit">Kayıt Ol</button>
     </form>
-    <p>Zaten hesabınız var mı? <a href="{{ url_for('login') }}">Giriş Yap</a></p>
+    <p>Zaten hesabınız var mı? <a href="{{ url_for('main.login') }}">Giriş Yap</a></p>
 </body>
 </html>

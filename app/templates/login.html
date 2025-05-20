@@ -6,13 +6,13 @@
 </head>
 <body>
     <h2>Giriş Yap</h2>
-    <form method="POST" action="{{ url_for('login') }}">
+    <form method="POST" action="{{ url_for('main.login') }}">
         <label>Email:</label><br>
         <input type="email" name="email" required><br>
         <label>Şifre:</label><br>
         <input type="password" name="password" required><br><br>
         <button type="submit">Giriş</button>
     </form>
-    <p>Hesabınız yok mu? <a href="{{ url_for('register') }}">Kayıt Ol</a></p>
+    <p>Hesabınız yok mu? <a href="{{ url_for('main.register') }}">Kayıt Ol</a></p>
 </body>
 </html>

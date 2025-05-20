@@ -8,12 +8,12 @@
     <h1>Malzemelerle Yemek Tarifi Bul</h1>
     
     {% if current_user.is_authenticated %}
-        <p>Hoşgeldin, {{ current_user.username }} | <a href="{{ url_for('logout') }}">Çıkış</a> | <a href="{{ url_for('profile') }}">Profil</a></p>
+        <p>Hoşgeldin, {{ current_user.username }} | <a href="{{ url_for('main.logout') }}">Çıkış</a> | <a href="{{ url_for('main.profile') }}">Profil</a></p>
     {% else %}
-        <p><a href="{{ url_for('login') }}">Giriş Yap</a> | <a href="{{ url_for('register') }}">Kayıt Ol</a></p>
+        <p><a href="{{ url_for('main.login') }}">Giriş Yap</a> | <a href="{{ url_for('main.register') }}">Kayıt Ol</a></p>
     {% endif %}
     
-    <form method="POST" action="{{ url_for('index') }}">
+    <form method="POST" action="{{ url_for('main.index') }}">
         <label for="ingredients">Malzemeleri virgülle ayırarak girin:</label><br>
         <input type="text" id="ingredients" name="ingredients" style="width:400px;" placeholder="Örnek: domates, yumurta, peynir"><br><br>
         <button type="submit">Tarifleri Getir</button>
