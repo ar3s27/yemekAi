@@ -23,6 +23,7 @@ def query_gemini(prompt_text):
     return result['parts'][0]['text'] if 'parts' in result else None
 
 
+
 @bp.route('/', methods=['GET', 'POST'])
 def index():
     ai_recipe = None
