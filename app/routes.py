@@ -1,52 +1,44 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import login_user, login_required, logout_user, current_user
 from .models import User, Recipe
 from . import db, bcrypt
 import requests
 import os
-from .gemini_api import query_gemini
-
 
 bp = Blueprint('main', __name__)
 
-def get_recipes_from_gemini(ingredients):
-    api_key = os.getenv("GEMINI_API_KEY")
-    url = "https://api.gemini.ai/v1/text/completions"  # Gemini 2.0 Flash endpoint'i
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json",
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+
+def query_gemini(prompt):
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
+    headers = {"Content-Type": "application/json"}
+    data = {
+        "contents": [
+            {"parts": [{"text": f"{prompt} ile yapılabilecek bir yemek tarifi ver."}]}
+        ]
     }
-    payload = {
-        "model": "gemini-2.0-flash",
-        "prompt": f"{ingredients} ile yapılabilecek yemek tariflerini listele.",
-        "max_tokens": 500,
-        "temperature": 0.7,
-    }
-    response = requests.post(url, headers=headers, json=payload)
+    response = requests.post(url, headers=headers, json=data)
     if response.status_code == 200:
-        data = response.json()
-        # API yanıt yapısına göre uyarlayabilirsin
-        text = data['completions'][0]['data']['text']
-        # Satır satır tarifleri ayır
-        recipes = [line.strip() for line in text.split('\n') if line.strip()]
-        return recipes
+        result = response.json()
+        return result['candidates'][0]['content']['parts'][0]['text']
     else:
-        print(f"Gemini API error: {response.status_code} {response.text}")
-        return []
+        return "Yapay zeka ile tarif alınamadı."
 
 @bp.route('/', methods=['GET', 'POST'])
 def index():
+    generated_recipe = None
     if request.method == 'POST':
         ingredients = request.form.get('ingredients')
-        recipe_text = None
         if ingredients:
-            recipe_text = query_gemini(f"Malzemeler: {ingredients}. Bana lezzetli bir yemek tarifi öner.")
-            flash("Tarif önerisi hazırlandı.", "success")
-        recipes = Recipe.query.all()
-        return render_template('index.html', recipes=recipes, ai_recipe=recipe_text)
-    else:
-        recipes = Recipe.query.all()
-        return render_template('index.html', recipes=recipes)
+            generated_recipe = query_gemini(ingredients)
+            if current_user.is_authenticated and 'save' in request.form:
+                new_recipe = Recipe(content=generated_recipe)
+                db.session.add(new_recipe)
+                current_user.liked_recipes.append(new_recipe)
+                db.session.commit()
+                flash("Tarif kaydedildi.", "success")
+    recipes = Recipe.query.all()
+    return render_template('index.html', recipes=recipes, generated_recipe=generated_recipe)
 
 @bp.route('/login', methods=['GET', 'POST'])
 def login():
@@ -61,7 +53,7 @@ def login():
             flash("Başarıyla giriş yapıldı.", "success")
             return redirect(url_for('main.index'))
         else:
-            flash("Giriş başarısız, bilgilerinizi kontrol edin.", "danger")
+            flash("Giriş başarısız.", "danger")
     return render_template('login.html')
 
 @bp.route('/register', methods=['GET', 'POST'])
@@ -79,7 +71,7 @@ def register():
             new_user = User(username=username, email=email, password_hash=hashed_pw)
             db.session.add(new_user)
             db.session.commit()
-            flash("Kayıt başarılı, giriş yapabilirsiniz.", "success")
+            flash("Kayıt başarılı.", "success")
             return redirect(url_for('main.login'))
     return render_template('register.html')
 

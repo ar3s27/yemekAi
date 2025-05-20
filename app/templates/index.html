@@ -1,46 +1,36 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="tr">
 <head>
-    <meta charset="UTF-8" />
-    <title>Ana Sayfa - Tarifler</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+    <meta charset="utf-8">
+    <title>YemekAI</title>
 </head>
 <body>
-    <h1>Yemek Tarifleri</h1>
-
-    <form method="post" action="{{ url_for('main.index') }}">
-        <label for="ingredients">Malzemeleri Giriniz:</label><br>
-        <input type="text" id="ingredients" name="ingredients" placeholder="Örnek: Domates, peynir, makarna" required />
-        <button type="submit">Tarif İste</button>
+    <h1>Yemek Tarifi Al</h1>
+    <form method="POST">
+        <input type="text" name="ingredients" placeholder="Malzemeleri gir" required>
+        <button type="submit">Tarif Al</button>
+        {% if current_user.is_authenticated and generated_recipe %}
+            <button type="submit" name="save">Tarifi Kaydet</button>
+        {% endif %}
     </form>
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        <ul>
-          {% for category, message in messages %}
-            <li class="alert alert-{{ category }}">{{ message }}</li>
-          {% endfor %}
-        </ul>
-      {% endif %}
-    {% endwith %}
-
-    {% if ai_recipe %}
-    <div class="ai-recipe">
-        <h2>Yapay Zekadan Gelen Tarif</h2>
-        <p>{{ ai_recipe }}</p>
-    </div>
+    {% if generated_recipe %}
+        <h3>AI Tarifi:</h3>
+        <pre>{{ generated_recipe }}</pre>
     {% endif %}
 
-    <hr>
-
-    <h2>Kaydedilmiş Tarifler</h2>
-    <ul>
-      {% for recipe in recipes %}
-        <li>{{ recipe.name }} - {{ recipe.description }}</li>
-      {% else %}
-        <li>Henüz tarif eklenmemiş.</li>
-      {% endfor %}
-    </ul>
-
+    <h2>Tüm Tarifler</h2>
+    {% for recipe in recipes %}
+        <div>
+            <pre>{{ recipe.content }}</pre>
+            {% if current_user.is_authenticated %}
+                <form action="{{ url_for('main.like', recipe_id=recipe.id) }}" method="post">
+                    <button type="submit">
+                        {% if recipe in current_user.liked_recipes %}Beğeniyi Kaldır{% else %}Beğen{% endif %}
+                    </button>
+                </form>
+            {% endif %}
+        </div>
+    {% endfor %}
 </body>
 </html>

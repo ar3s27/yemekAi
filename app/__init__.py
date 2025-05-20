@@ -5,8 +5,8 @@ from flask_bcrypt import Bcrypt
 import os
 
 db = SQLAlchemy()
+bcrypt = Bcrypt()
 login_manager = LoginManager()
-bcrypt = Bcrypt()  # Bcrypt tanımlaması
 
 def create_app():
     app = Flask(__name__)
@@ -15,10 +15,9 @@ def create_app():
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
     db.init_app(app)
+    bcrypt.init_app(app)
     login_manager.init_app(app)
-    bcrypt.init_app(app)  # Bcrypt'i Flask uygulamasına bağla
-
-    login_manager.login_view = 'main.login'  # Blueprint + route ismi
+    login_manager.login_view = 'main.login'
 
     from .models import User
 
