@@ -9,36 +9,33 @@ bp = Blueprint('main', __name__)
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-def query_gemini(prompt):
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
+
+def query_gemini(prompt_text):
+    api_key = os.getenv('GEMINI_API_KEY')
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}"
     headers = {"Content-Type": "application/json"}
     data = {
-        "contents": [
-            {"parts": [{"text": f"{prompt} ile yapılabilecek bir yemek tarifi ver."}]}
-        ]
+        "contents": [{"parts": [{"text": prompt_text}]}]
     }
-    response = requests.post(url, headers=headers, json=data)
-    if response.status_code == 200:
-        result = response.json()
-        return result['candidates'][0]['content']['parts'][0]['text']
-    else:
-        return "Yapay zeka ile tarif alınamadı."
+    response = requests.post(url, json=data, headers=headers)
+    response.raise_for_status()
+    result = response.json()
+    return result['parts'][0]['text'] if 'parts' in result else None
+
 
 @bp.route('/', methods=['GET', 'POST'])
 def index():
-    generated_recipe = None
+    ai_recipe = None
     if request.method == 'POST':
         ingredients = request.form.get('ingredients')
         if ingredients:
-            generated_recipe = query_gemini(ingredients)
-            if current_user.is_authenticated and 'save' in request.form:
-                new_recipe = Recipe(content=generated_recipe)
-                db.session.add(new_recipe)
-                current_user.liked_recipes.append(new_recipe)
-                db.session.commit()
-                flash("Tarif kaydedildi.", "success")
+            try:
+                ai_recipe = query_gemini(f"Malzemeler: {ingredients}. Bana lezzetli ve pratik bir yemek tarifi öner.")
+                flash("Tarif önerisi hazırlandı.", "success")
+            except Exception as e:
+                flash(f"Tarif alınırken hata oluştu: {str(e)}", "danger")
     recipes = Recipe.query.all()
-    return render_template('index.html', recipes=recipes, generated_recipe=generated_recipe)
+    return render_template('index.html', recipes=recipes, ai_recipe=ai_recipe)
 
 @bp.route('/login', methods=['GET', 'POST'])
 def login():
