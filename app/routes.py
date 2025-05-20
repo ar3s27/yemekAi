@@ -2,17 +2,51 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_user, login_required, logout_user, current_user
 from .models import User, Recipe
 from . import db, bcrypt
+import requests
+import os
+from .gemini_api import query_gemini
+
 
 bp = Blueprint('main', __name__)
+
+def get_recipes_from_gemini(ingredients):
+    api_key = os.getenv("GEMINI_API_KEY")
+    url = "https://api.gemini.ai/v1/text/completions"  # Gemini 2.0 Flash endpoint'i
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+    payload = {
+        "model": "gemini-2.0-flash",
+        "prompt": f"{ingredients} ile yapılabilecek yemek tariflerini listele.",
+        "max_tokens": 500,
+        "temperature": 0.7,
+    }
+    response = requests.post(url, headers=headers, json=payload)
+    if response.status_code == 200:
+        data = response.json()
+        # API yanıt yapısına göre uyarlayabilirsin
+        text = data['completions'][0]['data']['text']
+        # Satır satır tarifleri ayır
+        recipes = [line.strip() for line in text.split('\n') if line.strip()]
+        return recipes
+    else:
+        print(f"Gemini API error: {response.status_code} {response.text}")
+        return []
 
 @bp.route('/', methods=['GET', 'POST'])
 def index():
     if request.method == 'POST':
         ingredients = request.form.get('ingredients')
-        # Gemini API sorgusu yapılacak yer
-        flash(f"Tarifler için sorgulandı: {ingredients}", "info")
-    recipes = Recipe.query.all()
-    return render_template('index.html', recipes=recipes)
+        recipe_text = None
+        if ingredients:
+            recipe_text = query_gemini(f"Malzemeler: {ingredients}. Bana lezzetli bir yemek tarifi öner.")
+            flash("Tarif önerisi hazırlandı.", "success")
+        recipes = Recipe.query.all()
+        return render_template('index.html', recipes=recipes, ai_recipe=recipe_text)
+    else:
+        recipes = Recipe.query.all()
+        return render_template('index.html', recipes=recipes)
 
 @bp.route('/login', methods=['GET', 'POST'])
 def login():

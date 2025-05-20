@@ -1,53 +1,45 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-    <meta charset="UTF-8">
-    <title>Yemek Tarifleri</title>
+    <meta charset="UTF-8" />
+    <title>Ana Sayfa - Tarifler</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
 </head>
 <body>
-    <h1>Malzemelerle Yemek Tarifi Bul</h1>
-    
-    {% if current_user.is_authenticated %}
-        <p>Hoşgeldin, {{ current_user.username }} | <a href="{{ url_for('main.logout') }}">Çıkış</a> | <a href="{{ url_for('main.profile') }}">Profil</a></p>
-    {% else %}
-        <p><a href="{{ url_for('main.login') }}">Giriş Yap</a> | <a href="{{ url_for('main.register') }}">Kayıt Ol</a></p>
-    {% endif %}
-    
-    <form method="POST" action="{{ url_for('main.index') }}">
-        <label for="ingredients">Malzemeleri virgülle ayırarak girin:</label><br>
-        <input type="text" id="ingredients" name="ingredients" style="width:400px;" placeholder="Örnek: domates, yumurta, peynir"><br><br>
-        <button type="submit">Tarifleri Getir</button>
+    <h1>Yemek Tarifleri</h1>
+
+    <form method="post" action="{{ url_for('main.index') }}">
+        <label for="ingredients">Malzemeleri Giriniz:</label><br>
+        <input type="text" id="ingredients" name="ingredients" placeholder="Örnek: Domates, peynir, makarna" required />
+        <button type="submit">Tarif İste</button>
     </form>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            <ul>
-            {% for category, message in messages %}
-                <li><strong>{{ category }}</strong>: {{ message }}</li>
-            {% endfor %}
-            </ul>
-        {% endif %}
+      {% if messages %}
+        <ul>
+          {% for category, message in messages %}
+            <li class="alert alert-{{ category }}">{{ message }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
     {% endwith %}
 
-    <h2>Tarifler</h2>
+    {% if ai_recipe %}
+    <div class="ai-recipe">
+        <h2>Yapay Zekadan Gelen Tarif</h2>
+        <p>{{ ai_recipe }}</p>
+    </div>
+    {% endif %}
+
+    <hr>
+
+    <h2>Kaydedilmiş Tarifler</h2>
     <ul>
-        {% for recipe in recipes %}
-            <li>
-                <h3>{{ recipe.title }}</h3>
-                <p><strong>Malzemeler:</strong> {{ recipe.ingredients }}</p>
-                <p><strong>Tarif:</strong> {{ recipe.recipe }}</p>
-                {% if current_user.is_authenticated %}
-                    <!-- Beğen butonu (şimdilik pasif) -->
-                    <form action="{{ url_for('like', recipe_id=0) }}" method="POST" style="display:inline;">
-                        <button type="submit">Beğen</button>
-                    </form>
-                {% else %}
-                    <small>Beğenmek için giriş yapın.</small>
-                {% endif %}
-            </li>
-        {% else %}
-            <li>Tarif bulunamadı.</li>
-        {% endfor %}
+      {% for recipe in recipes %}
+        <li>{{ recipe.name }} - {{ recipe.description }}</li>
+      {% else %}
+        <li>Henüz tarif eklenmemiş.</li>
+      {% endfor %}
     </ul>
 
 </body>
