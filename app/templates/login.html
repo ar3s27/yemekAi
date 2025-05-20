@@ -1,0 +1,9 @@
+{% extends "layout.html" %}
+{% block content %}
+<h2>Giriş Yap</h2>
+<form method="POST" action="{{ url_for('login') }}">
+    <input type="text" name="username" placeholder="Kullanıcı adı" required>
+    <input type="password" name="password" placeholder="Şifre" required>
+    <button type="submit">Giriş</button>
+</form>
+{% endblock %}

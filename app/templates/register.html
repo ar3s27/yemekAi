@@ -1,0 +1,9 @@
+{% extends "layout.html" %}
+{% block content %}
+<h2>Kayıt Ol</h2>
+<form method="POST" action="{{ url_for('register') }}">
+    <input type="text" name="username" placeholder="Kullanıcı adı" required>
+    <input type="password" name="password" placeholder="Şifre" required>
+    <button type="submit">Kayıt Ol</button>
+</form>
+{% endblock %}

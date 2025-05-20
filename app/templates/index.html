@@ -1,0 +1,20 @@
+{% extends "layout.html" %}
+{% block content %}
+<h2>Malzemelerini Gir</h2>
+<form method="POST" action="{{ url_for('index') }}">
+    <input type="text" name="ingredients" placeholder="örneğin: yumurta, domates, peynir" style="width: 300px;" required>
+    <button type="submit">Tarif Bul</button>
+</form>
+
+{% if recipe %}
+    <h3>Tarif Önerisi:</h3>
+    <pre>{{ recipe.content }}</pre>
+    {% if current_user.is_authenticated %}
+        <form method="POST" action="{{ url_for('like', recipe_id=recipe.id) }}" id="like-form">
+            <button type="submit" id="like-btn">Beğen</button>
+        </form>
+    {% else %}
+        <p>Beğenmek için giriş yapmalısın.</p>
+    {% endif %}
+{% endif %}
+{% endblock %}

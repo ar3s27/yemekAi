@@ -1,0 +1,16 @@
+{% extends "layout.html" %}
+{% block content %}
+<h2>Beğendiğin Tarifler</h2>
+{% if recipes %}
+<ul>
+    {% for recipe in recipes %}
+    <li>
+        <h3>{{ recipe.title }}</h3>
+        <pre>{{ recipe.content }}</pre>
+    </li>
+    {% endfor %}
+</ul>
+{% else %}
+<p>Henüz beğendiğin tarif yok.</p>
+{% endif %}
+{% endblock %}
