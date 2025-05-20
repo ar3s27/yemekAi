@@ -3,3 +3,6 @@ flask_sqlalchemy
 flask_login
 python-dotenv
 google-generativeai
+Flask-WTF
+WTForms
+Werkzeug
