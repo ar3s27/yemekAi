@@ -33,7 +33,11 @@
                 {% if current_user.is_authenticated %}
                     <form method="POST" action="{{ url_for('main.like', recipe_id=recipe.id) }}">
                         <button type="submit" class="btn btn-outline-danger btn-sm">
-                            {% if recipe in current_user.liked_recipes %}❤️ Beğenildi{% else %}🤍 Beğen{% endif %}
+                            {% if recipe in current_user.liked_recipes %}
+                                ❤️ Beğenildi
+                            {% else %}
+                                🤍 Beğen
+                            {% endif %}
                         </button>
                     </form>
                 {% endif %}
