@@ -31,6 +31,7 @@ def query_gemini(prompt_text):
 @bp.route('/', methods=['GET', 'POST'])
 def index():
     ai_recipe = None
+    recipes = []
     if request.method == 'POST':
         ingredients = request.form.get('ingredients')
         if ingredients:
@@ -50,9 +51,20 @@ def index():
                         )
                         db.session.add(new_recipe)
                         db.session.commit()
+                # Sadece yeni eklenen tarifi göster
+                recipe = Recipe.query.filter_by(title=ai_title).first()
+                # Eğer kullanıcı giriş yaptıysa ve bu tarifi beğendiyse, recipes boş gelsin
+                if current_user.is_authenticated and recipe in current_user.liked_recipes:
+                    recipes = []
+                else:
+                    recipes = [recipe]
             except Exception as e:
                 flash(f"Tarif alınırken hata oluştu: {str(e)}", "danger")
-    recipes = Recipe.query.all()
+    elif request.method == 'GET' and request.args.get('show_recipe'):
+        recipe_id = request.args.get('show_recipe')
+        recipe = Recipe.query.get(recipe_id)
+        if recipe:
+            recipes = [recipe]
     return render_template('index.html', recipes=recipes, ai_recipe=ai_recipe)
 
 @bp.route('/login', methods=['GET', 'POST'])
@@ -108,10 +120,26 @@ def like(recipe_id):
         current_user.liked_recipes.append(recipe)
         flash("Tarif beğenildi.", "success")
     db.session.commit()
-    return redirect(request.referrer or url_for('main.index'))
+    # Beğenilen tarifi tekrar göstermek için ana sayfaya tarif ID'si ile yönlendir
+    return redirect(url_for('main.index', show_recipe=recipe_id))
+
+@bp.route('/unlike/<int:recipe_id>', methods=['POST'])
+@login_required
+def unlike(recipe_id):
+    recipe = Recipe.query.get_or_404(recipe_id)
+    if recipe in current_user.liked_recipes:
+        current_user.liked_recipes.remove(recipe)
+        db.session.commit()
+    return redirect(url_for('main.profile'))
 
 @bp.route('/profile')
 @login_required
 def profile():
-    recipes = current_user.liked_recipes
-    return render_template('profile.html', recipes=recipes)
+    liked_recipes = current_user.liked_recipes
+    return render_template('profile.html', liked_recipes=liked_recipes)
+
+@bp.route('/recipe/<int:recipe_id>')
+@login_required
+def recipe_detail(recipe_id):
+    recipe = Recipe.query.get_or_404(recipe_id)
+    return render_template('recipe_detail.html', recipe=recipe)

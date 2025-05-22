@@ -14,44 +14,29 @@
 
 <h3>Önerilen Tarifler</h3>
 <div class="row">
-    {% if ai_recipe %}
+    {% for recipe in recipes %}
     <div class="col-md-12 mb-4">
         <div class="card border-success">
             <div class="card-body">
-                <h5 class="card-title text-success">AI Tarif Önerisi</h5>
-                <pre class="mb-0">{{ ai_recipe }}</pre>
-            </div>
-        </div>
-    </div>
-    {% endif %}
-    {% for recipe in recipes %}
-    <div class="col-md-6 mb-4">
-        <div class="card">
-            <div class="card-body">
-                <h5 class="card-title">{{ recipe.title }}</h5>
-                <p class="card-text">{{ recipe.description[:200] }}...</p>
+                <h5 class="card-title text-success">{{ recipe.title }}</h5>
+                <p class="card-text">{{ recipe.description }}</p>
+                <pre class="mb-0">{{ recipe.content or 'İçerik bulunamadı.' }}</pre>
                 {% if current_user.is_authenticated %}
                     <form method="POST" action="{{ url_for('main.like', recipe_id=recipe.id) }}">
                         <button type="submit" class="btn btn-outline-danger btn-sm">
                             {% if recipe in current_user.liked_recipes %}
                                 ❤️ Beğenildi
                             {% else %}
-                                🤍 Beğen
+                                🤍 Beğendim
                             {% endif %}
                         </button>
                     </form>
+                {% else %}
+                    <a href="{{ url_for('main.login') }}" class="btn btn-outline-primary btn-sm">Beğenmek için giriş yap</a>
                 {% endif %}
             </div>
         </div>
     </div>
     {% endfor %}
 </div>
-{% for recipe in recipes %}
-  <div class="recipe">
-    <h2>{{ recipe.title }}</h2>
-    <p><strong>Açıklama:</strong> {{ recipe.description }}</p>
-    <pre>{{ recipe.content }}</pre>
-    <!-- Beğenme butonu ve diğer işlemler burada olabilir -->
-  </div>
-{% endfor %}
 {% endblock %}
