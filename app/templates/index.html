@@ -11,15 +11,19 @@
         <button type="submit" class="btn btn-primary w-100">Tarif Getir</button>
     </div>
 </form>
-{% if ai_recipe %}
-  <div class="alert alert-success mt-3">
-    <h5>AI Tarif Önerisi:</h5>
-    <pre>{{ ai_recipe }}</pre>
-  </div>
-{% endif %}
 
 <h3>Önerilen Tarifler</h3>
 <div class="row">
+    {% if ai_recipe %}
+    <div class="col-md-12 mb-4">
+        <div class="card border-success">
+            <div class="card-body">
+                <h5 class="card-title text-success">AI Tarif Önerisi</h5>
+                <pre class="mb-0">{{ ai_recipe }}</pre>
+            </div>
+        </div>
+    </div>
+    {% endif %}
     {% for recipe in recipes %}
     <div class="col-md-6 mb-4">
         <div class="card">
