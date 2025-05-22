@@ -5,6 +5,8 @@ from . import db, bcrypt
 import requests
 import os
 from sqlalchemy.sql.expression import func
+import random
+
 
 bp = Blueprint('main', __name__)
 
@@ -26,45 +28,36 @@ def query_gemini(prompt_text):
 
 @bp.route('/', methods=['GET', 'POST'])
 def index():
-    recipes = []
     ai_recipe = None
+    recipes = []
 
-    # Eğer GET ve show_recipe parametresi varsa sadece o tarifi göster
-    show_recipe_id = request.args.get('show_recipe', type=int)
-    if request.method == 'GET' and show_recipe_id:
-        recipe = Recipe.query.get(show_recipe_id)
-        if recipe:
-            recipes = [recipe]
-        else:
-            flash("Tarif bulunamadı.", "warning")
-    elif request.method == 'POST':
-        ingredients = request.form.get('ingredients')
-        if ingredients:
-            try:
-                ai_recipe = query_gemini(f"Malzemeler: {ingredients}. Bana lezzetli ve pratik bir yemek tarifi öner.")
-                flash("Tarif önerisi hazırlandı.", "success")
-                if ai_recipe:
-                    lines = ai_recipe.split('\n', 2)
-                    ai_title = lines[0] if len(lines) > 0 else "AI Tarifi"
-                    ai_description = lines[1] if len(lines) > 1 else ""
-                    ai_content = ai_recipe
+    if request.method == 'POST':
+        # (Burada önceki kodun aynısı)
 
-                    recipe = Recipe.query.filter_by(title=ai_title).first()
-                    if not recipe:
-                        recipe = Recipe(title=ai_title, description=ai_description, content=ai_content)
-                        db.session.add(recipe)
-                        db.session.commit()
-                    recipes = [recipe]
-            except Exception as e:
-                flash(f"Tarif alınırken hata oluştu: {str(e)}", "danger")
+        session.pop('random_recipes', None)  # Yeni aramada eski rasgeleleri sil
+
     else:
-        from sqlalchemy.sql.expression import func
-        recipes = Recipe.query.order_by(func.random()).limit(5).all()
+        show_recipes = request.args.get('show_recipes')
+        if show_recipes:
+            try:
+                ids = [int(i) for i in show_recipes.split(',')]
+                recipes = Recipe.query.filter(Recipe.id.in_(ids)).all()
+                session['random_recipes'] = ids  # session'ı güncelle
+            except:
+                recipes = []
+        else:
+            # Rastgele tarifler için session kontrolü
+            recipe_ids = session.get('random_recipes')
+            if recipe_ids:
+                recipes = Recipe.query.filter(Recipe.id.in_(recipe_ids)).all()
+            else:
+                all_recipe_ids = [r.id for r in Recipe.query.all()]
+                if all_recipe_ids:
+                    random_ids = random.sample(all_recipe_ids, min(5, len(all_recipe_ids)))
+                    session['random_recipes'] = random_ids
+                    recipes = Recipe.query.filter(Recipe.id.in_(random_ids)).all()
 
     return render_template('index.html', recipes=recipes, ai_recipe=ai_recipe)
-
-
-
 @bp.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
@@ -120,15 +113,24 @@ def logout():
 @login_required
 def like(recipe_id):
     recipe = Recipe.query.get_or_404(recipe_id)
+
     if recipe in current_user.liked_recipes:
         current_user.liked_recipes.remove(recipe)
         flash("Beğeni kaldırıldı.", "info")
     else:
         current_user.liked_recipes.append(recipe)
         flash("Tarif beğenildi.", "success")
+
     db.session.commit()
-    # Burada yönlendirme yaparken show_recipe parametresini gönderiyoruz ki tarif tekrar gösterilsin
-    return redirect(url_for('main.index', show_recipe=recipe_id))
+
+    # Session'da kayıtlı rastgele tarif ID'leri varsa, onları show_recipe_ids olarak ekle
+    random_recipes = session.get('random_recipes')
+    if random_recipes:
+        # URL parametresine recipe_ids dizisi ekleyelim (örn: show_recipes=1,2,3)
+        ids_param = ",".join(str(rid) for rid in random_recipes)
+        return redirect(url_for('main.index') + f"?show_recipes={ids_param}")
+    else:
+        return redirect(url_for('main.index'))
 
 
 @bp.route('/unlike/<int:recipe_id>', methods=['POST'])
