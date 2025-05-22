@@ -4,6 +4,7 @@ from .models import User, Recipe
 from . import db, bcrypt
 import requests
 import os
+from sqlalchemy.sql.expression import func
 
 bp = Blueprint('main', __name__)
 
@@ -14,9 +15,7 @@ def query_gemini(prompt_text):
     api_key = os.getenv('GEMINI_API_KEY')
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}"
     headers = {"Content-Type": "application/json"}
-    data = {
-        "contents": [{"parts": [{"text": prompt_text}]}]
-    }
+    data = {"contents": [{"parts": [{"text": prompt_text}]}]}
     response = requests.post(url, json=data, headers=headers)
     response.raise_for_status()
     result = response.json()
@@ -25,12 +24,20 @@ def query_gemini(prompt_text):
     except (KeyError, IndexError):
         return None
 
-
 @bp.route('/', methods=['GET', 'POST'])
 def index():
-    ai_recipe = None
     recipes = []
-    if request.method == 'POST':
+    ai_recipe = None
+
+    # Eğer GET ve show_recipe parametresi varsa sadece o tarifi göster
+    show_recipe_id = request.args.get('show_recipe', type=int)
+    if request.method == 'GET' and show_recipe_id:
+        recipe = Recipe.query.get(show_recipe_id)
+        if recipe:
+            recipes = [recipe]
+        else:
+            flash("Tarif bulunamadı.", "warning")
+    elif request.method == 'POST':
         ingredients = request.form.get('ingredients')
         if ingredients:
             try:
@@ -41,32 +48,21 @@ def index():
                     ai_title = lines[0] if len(lines) > 0 else "AI Tarifi"
                     ai_description = lines[1] if len(lines) > 1 else ""
                     ai_content = ai_recipe
-                    existing_recipe = Recipe.query.filter_by(title=ai_title).first()
-                    if not existing_recipe:
-                        new_recipe = Recipe(
-                            title=ai_title,
-                            description=ai_description,
-                            content=ai_content
-                        )
-                        db.session.add(new_recipe)
+
+                    recipe = Recipe.query.filter_by(title=ai_title).first()
+                    if not recipe:
+                        recipe = Recipe(title=ai_title, description=ai_description, content=ai_content)
+                        db.session.add(recipe)
                         db.session.commit()
-                        session['last_recipe_id'] = new_recipe.id  # EKLENDİ
-                        recipe = new_recipe
-                    else:
-                        recipe = existing_recipe
-                    # Eğer kullanıcı giriş yapmadıysa, tarif sayfasında göster
-                    if current_user.is_authenticated and recipe in current_user.liked_recipes:
-                        recipes = []
-                    else:
-                        recipes = [recipe]
+                    recipes = [recipe]
             except Exception as e:
                 flash(f"Tarif alınırken hata oluştu: {str(e)}", "danger")
-    elif request.method == 'GET' and request.args.get('show_recipe'):
-        recipe_id = request.args.get('show_recipe')
-        recipe = Recipe.query.get(recipe_id)
-        if recipe:
-            recipes = [recipe]
+    else:
+        from sqlalchemy.sql.expression import func
+        recipes = Recipe.query.order_by(func.random()).limit(5).all()
+
     return render_template('index.html', recipes=recipes, ai_recipe=ai_recipe)
+
 
 
 @bp.route('/login', methods=['GET', 'POST'])
@@ -131,6 +127,7 @@ def like(recipe_id):
         current_user.liked_recipes.append(recipe)
         flash("Tarif beğenildi.", "success")
     db.session.commit()
+    # Burada yönlendirme yaparken show_recipe parametresini gönderiyoruz ki tarif tekrar gösterilsin
     return redirect(url_for('main.index', show_recipe=recipe_id))
 
 
