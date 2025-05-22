@@ -46,4 +46,12 @@
     </div>
     {% endfor %}
 </div>
+{% for recipe in recipes %}
+  <div class="recipe">
+    <h2>{{ recipe.title }}</h2>
+    <p><strong>Açıklama:</strong> {{ recipe.description }}</p>
+    <pre>{{ recipe.content }}</pre>
+    <!-- Beğenme butonu ve diğer işlemler burada olabilir -->
+  </div>
+{% endfor %}
 {% endblock %}

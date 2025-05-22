@@ -37,13 +37,11 @@ def index():
             try:
                 ai_recipe = query_gemini(f"Malzemeler: {ingredients}. Bana lezzetli ve pratik bir yemek tarifi öner.")
                 flash("Tarif önerisi hazırlandı.", "success")
-                # AI cevabını başlık ve açıklama olarak ayır (örnek bir ayrıştırıcı)
                 if ai_recipe:
                     lines = ai_recipe.split('\n', 2)
                     ai_title = lines[0] if len(lines) > 0 else "AI Tarifi"
                     ai_description = lines[1] if len(lines) > 1 else ""
                     ai_content = ai_recipe
-                    # Tarif veritabanında var mı kontrol et
                     if not Recipe.query.filter_by(title=ai_title).first():
                         new_recipe = Recipe(
                             title=ai_title,
