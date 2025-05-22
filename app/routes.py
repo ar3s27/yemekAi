@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session
 from flask_login import login_user, login_required, logout_user, current_user
 from .models import User, Recipe
 from . import db, bcrypt
@@ -20,12 +20,10 @@ def query_gemini(prompt_text):
     response = requests.post(url, json=data, headers=headers)
     response.raise_for_status()
     result = response.json()
-    # Gemini API'nin dönen yapısı bazen 'candidates' altında olabilir
     try:
         return result['candidates'][0]['content']['parts'][0]['text']
     except (KeyError, IndexError):
         return None
-
 
 
 @bp.route('/', methods=['GET', 'POST'])
@@ -43,7 +41,8 @@ def index():
                     ai_title = lines[0] if len(lines) > 0 else "AI Tarifi"
                     ai_description = lines[1] if len(lines) > 1 else ""
                     ai_content = ai_recipe
-                    if not Recipe.query.filter_by(title=ai_title).first():
+                    existing_recipe = Recipe.query.filter_by(title=ai_title).first()
+                    if not existing_recipe:
                         new_recipe = Recipe(
                             title=ai_title,
                             description=ai_description,
@@ -51,13 +50,15 @@ def index():
                         )
                         db.session.add(new_recipe)
                         db.session.commit()
-                # Sadece yeni eklenen tarifi göster
-                recipe = Recipe.query.filter_by(title=ai_title).first()
-                # Eğer kullanıcı giriş yaptıysa ve bu tarifi beğendiyse, recipes boş gelsin
-                if current_user.is_authenticated and recipe in current_user.liked_recipes:
-                    recipes = []
-                else:
-                    recipes = [recipe]
+                        session['last_recipe_id'] = new_recipe.id  # EKLENDİ
+                        recipe = new_recipe
+                    else:
+                        recipe = existing_recipe
+                    # Eğer kullanıcı giriş yapmadıysa, tarif sayfasında göster
+                    if current_user.is_authenticated and recipe in current_user.liked_recipes:
+                        recipes = []
+                    else:
+                        recipes = [recipe]
             except Exception as e:
                 flash(f"Tarif alınırken hata oluştu: {str(e)}", "danger")
     elif request.method == 'GET' and request.args.get('show_recipe'):
@@ -66,6 +67,7 @@ def index():
         if recipe:
             recipes = [recipe]
     return render_template('index.html', recipes=recipes, ai_recipe=ai_recipe)
+
 
 @bp.route('/login', methods=['GET', 'POST'])
 def login():
@@ -78,10 +80,17 @@ def login():
         if user and bcrypt.check_password_hash(user.password_hash, password):
             login_user(user)
             flash("Başarıyla giriş yapıldı.", "success")
+
+            # Oturum açıldıktan sonra, eğer daha önce bir tarif oluşturulmuşsa, o tarife yönlendir
+            last_recipe_id = session.pop('last_recipe_id', None)
+            if last_recipe_id:
+                return redirect(url_for('main.index', show_recipe=last_recipe_id))
+
             return redirect(url_for('main.index'))
         else:
             flash("Giriş başarısız.", "danger")
     return render_template('login.html')
+
 
 @bp.route('/register', methods=['GET', 'POST'])
 def register():
@@ -102,12 +111,14 @@ def register():
             return redirect(url_for('main.login'))
     return render_template('register.html')
 
+
 @bp.route('/logout')
 @login_required
 def logout():
     logout_user()
     flash("Çıkış yapıldı.", "info")
     return redirect(url_for('main.login'))
+
 
 @bp.route('/like/<int:recipe_id>', methods=['POST'])
 @login_required
@@ -120,8 +131,8 @@ def like(recipe_id):
         current_user.liked_recipes.append(recipe)
         flash("Tarif beğenildi.", "success")
     db.session.commit()
-    # Beğenilen tarifi tekrar göstermek için ana sayfaya tarif ID'si ile yönlendir
     return redirect(url_for('main.index', show_recipe=recipe_id))
+
 
 @bp.route('/unlike/<int:recipe_id>', methods=['POST'])
 @login_required
@@ -132,11 +143,13 @@ def unlike(recipe_id):
         db.session.commit()
     return redirect(url_for('main.profile'))
 
+
 @bp.route('/profile')
 @login_required
 def profile():
     liked_recipes = current_user.liked_recipes
     return render_template('profile.html', liked_recipes=liked_recipes)
+
 
 @bp.route('/recipe/<int:recipe_id>')
 @login_required
