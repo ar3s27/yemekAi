@@ -20,7 +20,11 @@ def query_gemini(prompt_text):
     response = requests.post(url, json=data, headers=headers)
     response.raise_for_status()
     result = response.json()
-    return result['parts'][0]['text'] if 'parts' in result else None
+    # Gemini API'nin dönen yapısı bazen 'candidates' altında olabilir
+    try:
+        return result['candidates'][0]['content']['parts'][0]['text']
+    except (KeyError, IndexError):
+        return None
 
 
 
