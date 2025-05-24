@@ -19,8 +19,8 @@
         <div class="card border-success">
             <div class="card-body">
                 <h5 class="card-title text-success">{{ recipe.title }}</h5>
-                <p class="card-text">{{ recipe.description }}</p>
-                <pre class="mb-0">{{ recipe.content or 'İçerik bulunamadı.' }}</pre>
+                <p class="card-text"><b>Hazırlanışı:</b><br>{{ recipe.description }}</p>
+                <p class="card-text"><b>İçerik (Malzemeler):</b><br><pre class="mb-0">{{ recipe.content or 'İçerik bulunamadı.' }}</pre></p>
                 {% if current_user.is_authenticated %}
                     <form method="POST" action="{{ url_for('main.like', recipe_id=recipe.id) }}">
                         <button type="submit" class="btn btn-outline-danger btn-sm">
