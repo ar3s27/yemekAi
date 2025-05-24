@@ -44,15 +44,23 @@ def index():
             recipe_blocks = [block for block in ai_response.split('===') if block.strip()][:3]
             for block in recipe_blocks:
                 title, preparation, content = "", "", ""
+                preparation_started = False
                 content_started = False
                 for line in block.strip().split('\n'):
                     if line.startswith("Başlık:"):
                         title = line.replace("Başlık:", "").strip()
+                        preparation_started = False
+                        content_started = False
                     elif line.startswith("Hazırlanışı:"):
+                        preparation_started = True
+                        content_started = False
                         preparation = line.replace("Hazırlanışı:", "").strip()
                     elif line.startswith("İçerik:"):
                         content_started = True
+                        preparation_started = False
                         content = line.replace("İçerik:", "").strip()
+                    elif preparation_started:
+                        preparation += "\n" + line.strip()
                     elif content_started:
                         content += "\n" + line.strip()
                 if not Recipe.query.filter_by(title=title).first():
