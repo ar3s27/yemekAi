@@ -28,25 +28,55 @@ def query_gemini(prompt_text):
 
 @bp.route('/', methods=['GET', 'POST'])
 def index():
-    ai_recipe = None
-    recipes = []
-
+    ai_recipes = []
     if request.method == 'POST':
-        # (Burada önceki kodun aynısı)
-
-        session.pop('random_recipes', None)  # Yeni aramada eski rasgeleleri sil
-
+        ingredients = request.form.get('ingredients')
+        if ingredients:
+            # AI'dan 3 tarif iste
+            ai_response = query_gemini(
+                f"Malzemeler: {ingredients}. Bana birbirinden tamamen farklı 3 pratik ve lezzetli yemek tarifi öner. "
+                "Her tarifi aşağıdaki formatta sırayla ve aralarına === koyarak ver:\n"
+                "Başlık: ...\nHazırlanışı: ...\nİçerik: ...\n===\n"
+                "Lütfen her tarifin başına 'Başlık:', hazırlanışına 'Hazırlanışı:', içeriğine 'İçerik:' yaz ve tarifleri === ile ayır. "
+                "İçerik kısmı sadece malzeme listesi olsun, hazırlanışı kısmı ise adım adım yapılışı olsun."
+            )
+            print("AI RAW RESPONSE:\n", ai_response)  # Debug için
+            recipe_blocks = [block for block in ai_response.split('===') if block.strip()][:3]
+            for block in recipe_blocks:
+                title, preparation, content = "", "", ""
+                content_started = False
+                for line in block.strip().split('\n'):
+                    if line.startswith("Başlık:"):
+                        title = line.replace("Başlık:", "").strip()
+                    elif line.startswith("Hazırlanışı:"):
+                        preparation = line.replace("Hazırlanışı:", "").strip()
+                    elif line.startswith("İçerik:"):
+                        content_started = True
+                        content = line.replace("İçerik:", "").strip()
+                    elif content_started:
+                        content += "\n" + line.strip()
+                if not Recipe.query.filter_by(title=title).first():
+                    new_recipe = Recipe(
+                        title=title or "AI Tarifi",
+                        description=preparation,
+                        content=content
+                    )
+                    db.session.add(new_recipe)
+                    db.session.commit()
+                recipe = Recipe.query.filter_by(title=title).first()
+                ai_recipes.append(recipe)
+        return render_template('index.html', recipes=ai_recipes)
+    # ...GET kısmı aynı kalabilir...
     else:
         show_recipes = request.args.get('show_recipes')
         if show_recipes:
             try:
                 ids = [int(i) for i in show_recipes.split(',')]
                 recipes = Recipe.query.filter(Recipe.id.in_(ids)).all()
-                session['random_recipes'] = ids  # session'ı güncelle
+                session['random_recipes'] = ids
             except:
                 recipes = []
         else:
-            # Rastgele tarifler için session kontrolü
             recipe_ids = session.get('random_recipes')
             if recipe_ids:
                 recipes = Recipe.query.filter(Recipe.id.in_(recipe_ids)).all()
@@ -56,8 +86,7 @@ def index():
                     random_ids = random.sample(all_recipe_ids, min(5, len(all_recipe_ids)))
                     session['random_recipes'] = random_ids
                     recipes = Recipe.query.filter(Recipe.id.in_(random_ids)).all()
-
-    return render_template('index.html', recipes=recipes, ai_recipe=ai_recipe)
+        return render_template('index.html', recipes=recipes)
 @bp.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
